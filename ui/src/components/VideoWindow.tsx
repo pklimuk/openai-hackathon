@@ -29,7 +29,7 @@ const VideoWindow: React.FC<VideoWindowProps> = ({
   }, [videoSrc, showVideo]);
 
   return (
-    <div className="relative w-full h-full bg-gray-900 rounded-l-lg overflow-hidden flex items-center justify-center">
+    <div className="relative w-full h-full from-gray-50 rounded-l-lg overflow-hidden flex items-center justify-center">
       {/* Slide image as background */}
       <img
         src={slide.slideImage}
