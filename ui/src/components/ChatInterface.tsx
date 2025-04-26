@@ -7,9 +7,10 @@ import { generateId } from "../utils/chatUtils";
 interface ChatInterfaceProps {
   onSendQuestion: (text: string) => void;
   lessonStarted: boolean;
+  onStartLesson: () => void;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ onSendQuestion, lessonStarted }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ onSendQuestion, lessonStarted, onStartLesson }) => {
   const [messages, setMessages] = useState<MessageType[]>([
     {
       id: generateId(),
@@ -48,12 +49,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onSendQuestion, lessonSta
         ))}
         {!lessonStarted && (
           <div className="text-center text-gray-500 mt-4">
-            Type <span className="font-bold">Yes</span> to start the lesson.
+            Click <span className="font-bold">Start Lesson</span> button to start the lesson.
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
-      <ChatInput onSendMessage={handleSendMessage} />
+      {!lessonStarted && (
+        <button
+          className="m-4 px-4 py-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors"
+          onClick={onStartLesson}
+        >
+          Start Lesson
+        </button>
+      )}
+      <ChatInput onSendMessage={handleSendMessage} lessonStarted={lessonStarted} />
     </div>
   );
 };

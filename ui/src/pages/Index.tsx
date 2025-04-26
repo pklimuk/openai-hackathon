@@ -163,12 +163,7 @@ const Index: React.FC = () => {
   // Handle chat input: queue questions during slide-video or answer phase
   const handleQuestion = useCallback((question: string) => {
     if (!lessonStarted) {
-      // Only accept 'Yes' (case-insensitive)
-      if (question.trim().toLowerCase() === 'yes') {
-        setLessonStarted(true);
-        setPhase('slide-video');
-      }
-      // Ignore any other input for the first message
+      // Ignore all input if lesson hasn't started
       return;
     }
     setQuestionQueue((prev) => [...prev, question]);
@@ -177,6 +172,12 @@ const Index: React.FC = () => {
       setIsProcessingQueue(true);
     }
   }, [lessonStarted, isProcessingQueue, phase]);
+
+  // Handler for Start Lesson button
+  const handleStartLesson = useCallback(() => {
+    setLessonStarted(true);
+    setPhase('slide-video');
+  }, []);
 
   // Clean up audio on unmount
   useEffect(() => {
@@ -258,7 +259,7 @@ const Index: React.FC = () => {
           </div>
           {/* Chat takes up 30% on larger screens */}
           <div className="w-full md:w-[30%] h-1/2 md:h-full">
-            <ChatInterface onSendQuestion={handleQuestion} lessonStarted={lessonStarted} />
+            <ChatInterface onSendQuestion={handleQuestion} lessonStarted={lessonStarted} onStartLesson={handleStartLesson} />
           </div>
         </div>
       </div>
