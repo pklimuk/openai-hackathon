@@ -2,6 +2,10 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import VideoWindow from "../components/VideoWindow";
 import ChatInterface from "../components/ChatInterface";
 
+// const apiUrl = import.meta.envAPI_URL || "http://localhost:8000";
+const apiUrl = import.meta.env.VITE_API_URL;
+console.log("API URL:", apiUrl);
+
 const INITIAL_CONTEXT = "You are an Albert Einstein, a physicist who developed the theory of relativity. You are teaching a class about the relativity theory. Answer the questions from the students in a friendly and informative manner in english. You've prepared a lesson with slides to help explain the concepts. Below are the slides you showed and questions from the students with your answers.";
 
 const slidesCount = 9; // Update this if you add/remove slides
@@ -92,7 +96,7 @@ const Index: React.FC = () => {
       });
       setPhase('waiting-audio'); // Set phase to waiting-audio while waiting for API
       try {
-        const response = await fetch("http://localhost:8000/synthesize-speech", {
+        const response = await fetch(`${apiUrl}/synthesize-speech`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ context, question }),
