@@ -9,7 +9,7 @@ const slidesCount = 9; // Update this if you add/remove slides
 function getSlidePaths(idx: number) {
   return {
     slideTextFile: `/` + idx + `/slide_` + idx + `.txt`,
-    slideImage: `/` + idx + `/` + idx + `.jpg`,
+    slideImage: `/` + idx + `/` + idx + `.png`,
     video: `/` + idx + `/einstein_` + idx + `.mp4`,
   };
 }
