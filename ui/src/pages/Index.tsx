@@ -17,16 +17,24 @@ function getSlidePaths(idx: number) {
 const LOOP_VIDEO = "/einsten-basic.mp4";
 const TALKING_LOOP_VIDEO = "/einsten-basic.mp4";
 
-// State machine: 'slide-video', 'pause-loop', 'playing-audio', 'initial'
+// State machine: 'slide-video', 'playing-audio', 'initial'
 const Index: React.FC = () => {
   const [lessonStarted, setLessonStarted] = useState(false);
   const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
-  const [phase, setPhase] = useState<'slide-video' | 'pause-loop' | 'playing-audio' | 'initial'>('initial');
-  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
+  const [phase, setPhase] = useState<'slide-video' | 'playing-audio' | 'initial'>('initial');
   const [context, setContext] = useState(INITIAL_CONTEXT);
   const [slideTexts, setSlideTexts] = useState<string[]>([]);
-  const pauseTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [questionQueue, setQuestionQueue] = useState<string[]>([]);
+  const [isProcessingQueue, setIsProcessingQueue] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const questionQueueRef = useRef<string[]>([]);
+  useEffect(() => {
+    questionQueueRef.current = questionQueue;
+  }, [questionQueue]);
+
+  // Only allow one processing at a time
+  const isProcessingRef = useRef(false);
 
   // Load all slide texts on mount
   useEffect(() => {
@@ -47,58 +55,6 @@ const Index: React.FC = () => {
     setPhase('initial');
   }, []);
 
-  // When slide video ends, start pause phase and add slide text to context
-  const handleSlideVideoEnd = useCallback(() => {
-    setContext(prev => prev + `\nSlide_${currentSlideIdx + 1}: "${slideTexts[currentSlideIdx] || ''}"`);
-    setPhase("pause-loop");
-  }, [currentSlideIdx, slideTexts]);
-
-  // Handle chat input
-  const handleQuestion = useCallback(async (question: string) => {
-    if (!lessonStarted) {
-      // Only accept 'Yes' (case-insensitive)
-      if (question.trim().toLowerCase() === 'yes') {
-        setLessonStarted(true);
-        setPhase('slide-video');
-      }
-      // Ignore any other input for the first message
-      return;
-    }
-    // When a question is sent from chat
-    setPendingQuestion(question);
-    setPhase("playing-audio");
-    try {
-      const response = await fetch("http://localhost:8000/synthesize-speech", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ context, question }),
-      });
-      if (!response.ok) throw new Error("Failed to synthesize speech");
-      const data = await response.json();
-      const answerText = data.answer || "";
-      const audioBase64 = data.audio_base64;
-      // Decode base64 audio
-      const audioBlob = base64ToBlob(audioBase64, "audio/mp3");
-      const audioUrl = URL.createObjectURL(audioBlob);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-      audio.onended = () => {
-        setPhase("pause-loop");
-        setPendingQuestion(null);
-      };
-      audio.play();
-      setContext((prev) => prev + `\nQ: ${question}\nA: ${answerText}`);
-    } catch (error) {
-      console.error("Error synthesizing or playing audio:", error);
-      setPhase("pause-loop");
-      setPendingQuestion(null);
-    }
-  }, [context, lessonStarted]);
-
   // Helper to decode base64 to Blob
   function base64ToBlob(base64: string, mime: string) {
     const byteChars = atob(base64);
@@ -110,22 +66,90 @@ const Index: React.FC = () => {
     return new Blob([byteArray], { type: mime });
   }
 
-  // Pause phase: start 10s timer, if no question, advance slide
-  useEffect(() => {
-    if (phase === "pause-loop") {
-      if (pauseTimeout.current) clearTimeout(pauseTimeout.current);
-      pauseTimeout.current = setTimeout(() => {
-        setPhase("slide-video");
-        setCurrentSlideIdx((idx) => (idx + 1) % slidesCount);
-      }, 10000);
-    } else if (phase !== "pause-loop" && pauseTimeout.current) {
-      clearTimeout(pauseTimeout.current);
-      pauseTimeout.current = null;
+  // Process the question queue safely
+  const processQuestionQueue = useCallback(async () => {
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
+    while (questionQueueRef.current.length > 0) {
+      const question = questionQueueRef.current[0];
+      setPhase('playing-audio');
+      try {
+        const response = await fetch("http://localhost:8000/synthesize-speech", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ context, question }),
+        });
+        if (!response.ok) throw new Error("Failed to synthesize speech");
+        const data = await response.json();
+        const answerText = data.answer || "";
+        const audioBase64 = data.audio_base64;
+        // Decode base64 audio
+        const audioBlob = base64ToBlob(audioBase64, "audio/mp3");
+        const audioUrl = URL.createObjectURL(audioBlob);
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current = null;
+        }
+        await new Promise<void>((resolve) => {
+          const audio = new Audio(audioUrl);
+          audioRef.current = audio;
+          audio.onended = () => {
+            resolve();
+          };
+          audio.play();
+        });
+        setContext((prev) => prev + `\nQ: ${question}\nA: ${answerText}`);
+      } catch (error) {
+        console.error("Error synthesizing or playing audio:", error);
+      }
+      // Remove the answered question
+      setQuestionQueue((prev) => prev.slice(1));
+      // Wait for state update
+      await new Promise((resolve) => setTimeout(resolve, 0));
     }
-    return () => {
-      if (pauseTimeout.current) clearTimeout(pauseTimeout.current);
-    };
-  }, [phase]);
+    isProcessingRef.current = false;
+    setIsProcessingQueue(false);
+    // Advance to next slide
+    setCurrentSlideIdx((idx) => (idx + 1) % slidesCount);
+    setPhase('slide-video');
+  }, [context]);
+
+  // When the queue changes and we're processing, process the next question
+  useEffect(() => {
+    if (isProcessingQueue && questionQueue.length > 0 && !isProcessingRef.current) {
+      processQuestionQueue();
+    }
+  }, [questionQueue, isProcessingQueue, processQuestionQueue]);
+
+  // When slide video ends, start processing the queue
+  const handleSlideVideoEnd = useCallback(() => {
+    setContext(prev => prev + `\nSlide_${currentSlideIdx + 1}: "${slideTexts[currentSlideIdx] || ''}"`);
+    if (questionQueueRef.current.length > 0) {
+      setIsProcessingQueue(true);
+    } else {
+      // No questions, advance slide
+      setCurrentSlideIdx((idx) => (idx + 1) % slidesCount);
+      setPhase('slide-video');
+    }
+  }, [currentSlideIdx, slideTexts]);
+
+  // Handle chat input: queue questions during slide-video or answer phase
+  const handleQuestion = useCallback((question: string) => {
+    if (!lessonStarted) {
+      // Only accept 'Yes' (case-insensitive)
+      if (question.trim().toLowerCase() === 'yes') {
+        setLessonStarted(true);
+        setPhase('slide-video');
+      }
+      // Ignore any other input for the first message
+      return;
+    }
+    setQuestionQueue((prev) => [...prev, question]);
+    // If currently not processing, start processing
+    if (!isProcessingQueue && phase !== 'slide-video') {
+      setIsProcessingQueue(true);
+    }
+  }, [lessonStarted, isProcessingQueue, phase]);
 
   // Clean up audio on unmount
   useEffect(() => {
@@ -151,11 +175,6 @@ const Index: React.FC = () => {
     showVideo = true;
     loop = false;
     muted = false;
-  } else if (phase === "pause-loop") {
-    videoSrc = LOOP_VIDEO;
-    showVideo = true;
-    loop = true;
-    muted = true;
   } else if (phase === "playing-audio") {
     videoSrc = TALKING_LOOP_VIDEO;
     showVideo = true;
