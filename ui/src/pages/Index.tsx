@@ -4,7 +4,7 @@ import ChatInterface from "../components/ChatInterface";
 
 const INITIAL_CONTEXT = "You are an Albert Einstein, a physicist who developed the theory of relativity. You are teaching a class about the relativity theory. Answer the questions from the students in a friendly and informative manner in english. You've prepared a lesson with slides to help explain the concepts. Below are the slides you showed and questions from the students with your answers.";
 
-const slidesCount = 9; // Update this if you add/remove slides
+// const slidesCount = 9; // Update this if you add/remove slides
 
 function getSlidePaths(idx: number) {
   return {
@@ -17,11 +17,11 @@ function getSlidePaths(idx: number) {
 const LOOP_VIDEO = "/einsten-basic.mp4";
 const TALKING_LOOP_VIDEO = "/einsten-basic.mp4";
 
-// State machine: 'slide-video', 'playing-audio', 'initial'
+// State machine: 'slide-video', 'playing-audio', 'initial', 'finished'
 const Index: React.FC = () => {
   const [lessonStarted, setLessonStarted] = useState(false);
   const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
-  const [phase, setPhase] = useState<'slide-video' | 'playing-audio' | 'initial'>('initial');
+  const [phase, setPhase] = useState<'slide-video' | 'playing-audio' | 'initial' | 'finished'>('initial');
   const [context, setContext] = useState(INITIAL_CONTEXT);
   const [slideTexts, setSlideTexts] = useState<string[]>([]);
   const [questionQueue, setQuestionQueue] = useState<string[]>([]);
@@ -109,10 +109,14 @@ const Index: React.FC = () => {
     }
     isProcessingRef.current = false;
     setIsProcessingQueue(false);
-    // Advance to next slide
-    setCurrentSlideIdx((idx) => (idx + 1) % slidesCount);
-    setPhase('slide-video');
-  }, [context]);
+    // Advance to next slide or finish
+    if (currentSlideIdx < slidesCount - 1) {
+      setCurrentSlideIdx((idx) => idx + 1);
+      setPhase('slide-video');
+    } else {
+      setPhase('finished');
+    }
+  }, [context, currentSlideIdx]);
 
   // When the queue changes and we're processing, process the next question
   useEffect(() => {
@@ -127,9 +131,13 @@ const Index: React.FC = () => {
     if (questionQueueRef.current.length > 0) {
       setIsProcessingQueue(true);
     } else {
-      // No questions, advance slide
-      setCurrentSlideIdx((idx) => (idx + 1) % slidesCount);
-      setPhase('slide-video');
+      // No questions, advance slide or finish
+      if (currentSlideIdx < slidesCount - 1) {
+        setCurrentSlideIdx((idx) => idx + 1);
+        setPhase('slide-video');
+      } else {
+        setPhase('finished');
+      }
     }
   }, [currentSlideIdx, slideTexts]);
 
@@ -180,6 +188,17 @@ const Index: React.FC = () => {
     showVideo = true;
     loop = true;
     muted = true;
+  }
+
+  if (phase === 'finished') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8 flex items-center justify-center">
+        <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-xl p-8 text-center">
+          <h1 className="text-3xl font-bold mb-4">Presentation Finished</h1>
+          <p className="text-lg text-gray-700">Thank you for attending the lesson on relativity theory!</p>
+        </div>
+      </div>
+    );
   }
 
   return (
