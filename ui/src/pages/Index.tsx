@@ -4,7 +4,7 @@ import ChatInterface from "../components/ChatInterface";
 
 const INITIAL_CONTEXT = "You are an Albert Einstein, a physicist who developed the theory of relativity. You are teaching a class about the relativity theory. Answer the questions from the students in a friendly and informative manner in english. You've prepared a lesson with slides to help explain the concepts. Below are the slides you showed and questions from the students with your answers.";
 
-// const slidesCount = 9; // Update this if you add/remove slides
+const slidesCount = 9; // Update this if you add/remove slides
 
 function getSlidePaths(idx: number) {
   return {
