@@ -1,12 +1,20 @@
-
-
 import os
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from teacher_communitcation.voice_communication import VoiceCommunication
 from teacher_communitcation.text_communication import TextCommunication
 app = FastAPI()
+
+# Allow all CORS (not secure, but as requested)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Initialize the voice communication client
 voice_client = VoiceCommunication()
