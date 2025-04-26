@@ -2,6 +2,8 @@ import os
 import sys
 
 from openai import OpenAI
+from elevenlabs import ElevenLabs
+
 
 
 if sys.platform == "darwin" and os.getenv("CUSTOM_SSL") == "true":
@@ -12,6 +14,9 @@ if sys.platform == "darwin" and os.getenv("CUSTOM_SSL") == "true":
 class VoiceCommunication:
     def __init__(self, api_key: str | None = None):
         self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+        self._elevenlabs_client = ElevenLabs(
+            api_key=os.getenv("ELEVENLABS_API_KEY"),
+        )
 
     def transcribe_audio(self, audio_bytes: bytes, audio_format: str) -> str | None:
         """
@@ -51,7 +56,7 @@ class VoiceCommunication:
         try:
             with self.client.audio.speech.with_streaming_response.create(
                 model=os.getenv("TTS_OPENAI_MODEL", "gpt-4o-mini-tts"),
-                voice="alloy",
+                voice="verse",
                 input=text_input
             ) as response:
                 return response.read()
@@ -59,3 +64,18 @@ class VoiceCommunication:
         except Exception as e:
             print(f"An error occurred during speech synthesis: {e}")
             return None
+        
+
+    def synthesize_speech_elevenlabs(self, text_input: str) -> bytes | None:
+        response = self._elevenlabs_client.text_to_speech.convert(
+            voice_id="28FSZXcnS3rglIbvrhwd",
+            output_format="mp3_44100_128",
+            text=text_input,
+            model_id="eleven_multilingual_v2",
+        )
+
+        audio_bytes = b""
+        for chunk in response:
+            audio_bytes += chunk
+
+        return audio_bytes

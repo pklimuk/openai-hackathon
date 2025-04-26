@@ -383,6 +383,28 @@ files = [
 ]
 
 [[package]]
+name = "elevenlabs"
+version = "1.57.0"
+description = ""
+optional = false
+python-versions = "<4.0,>=3.8"
+files = [
+    {file = "elevenlabs-1.57.0-py3-none-any.whl", hash = "sha256:95d5fb7b403757700a1db2858ae0bd2a90fd6042a43b5c7ceb32301508658d39"},
+    {file = "elevenlabs-1.57.0.tar.gz", hash = "sha256:39c8561617d1e304feaced0e0e3e91c7cd7547f61d0987fc66ebed27f2f74608"},
+]
+
+[package.dependencies]
+httpx = ">=0.21.2"
+pydantic = ">=1.9.2"
+pydantic-core = ">=2.18.2,<3.0.0"
+requests = ">=2.20"
+typing_extensions = ">=4.0.0"
+websockets = ">=11.0"
+
+[package.extras]
+pyaudio = ["pyaudio (>=0.2.14)"]
+
+[[package]]
 name = "evdev"
 version = "1.9.1"
 description = "Bindings to the Linux input handling subsystem"
@@ -2480,4 +2502,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "2662a6b8e09049bce535c209d7e72abc66b9a549acb7b0eabc320cab98db13a4"
+content-hash = "b98685978436ac5d4d6e499398fc049db496ba9a8cdad6eb76c1da3e0457ddee"

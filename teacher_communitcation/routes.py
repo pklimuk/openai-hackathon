@@ -26,7 +26,7 @@ def synthesize_speech(request: TextToSpeechRequest):
     text_client = TextCommunication(system_prompt=request.context)
     answer = text_client.send_message(request.question)
     try:
-        audio_bytes = voice_client.synthesize_speech(answer)
+        audio_bytes = voice_client.synthesize_speech_elevenlabs(answer)
         if audio_bytes is None:
             raise HTTPException(status_code=500, detail="Failed to synthesize speech")
         

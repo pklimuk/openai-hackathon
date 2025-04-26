@@ -19,6 +19,7 @@ openai = "^1.76.0"
 python-vlc = "^3.0.21203"
 fastapi = "^0.115.12"
 uvicorn = "^0.34.2"
+elevenlabs = "^1.57.0"
 
 [build-system]
 requires = ["poetry-core"]
