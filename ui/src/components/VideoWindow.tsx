@@ -45,7 +45,7 @@ const VideoWindow: React.FC<VideoWindowProps> = ({
             src={videoSrc}
             className="w-full h-full object-cover -translate-y+100"
             autoPlay
-            muted={phase === 'playing-audio' || phase === 'initial'}
+            muted={phase === 'playing-audio' || phase === 'initial' || phase === 'waiting-audio'}
             loop={loop}
             onEnded={loop ? undefined : onSlideVideoEnd}
           />

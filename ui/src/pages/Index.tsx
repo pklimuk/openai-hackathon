@@ -6,6 +6,9 @@ const INITIAL_CONTEXT = "You are an Albert Einstein, a physicist who developed t
 
 const slidesCount = 9; // Update this if you add/remove slides
 
+var QUESTIONS_REACTIONS = ["/einstein_q1.mp4", "/einstein_q2.mp4"];
+
+
 function getSlidePaths(idx: number) {
   return {
     slideTextFile: `/` + idx + `/slide_` + idx + `.txt`,
@@ -16,16 +19,18 @@ function getSlidePaths(idx: number) {
 
 const LOOP_VIDEO = "/einsten-basic.mp4";
 const TALKING_LOOP_VIDEO = "/einsten-basic.mp4";
+const NO_SOUND_VIDEO = "/einstein_no_sound.mp4";
 
-// State machine: 'slide-video', 'playing-audio', 'initial', 'finished'
+// State machine: 'slide-video', 'waiting-audio', 'playing-audio', 'initial', 'finished', 'reaction-video'
 const Index: React.FC = () => {
   const [lessonStarted, setLessonStarted] = useState(false);
   const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
-  const [phase, setPhase] = useState<'slide-video' | 'playing-audio' | 'initial' | 'finished'>('initial');
+  const [phase, setPhase] = useState<'slide-video' | 'waiting-audio' | 'playing-audio' | 'initial' | 'finished' | 'reaction-video'>('initial');
   const [context, setContext] = useState(INITIAL_CONTEXT);
   const [slideTexts, setSlideTexts] = useState<string[]>([]);
   const [questionQueue, setQuestionQueue] = useState<string[]>([]);
   const [isProcessingQueue, setIsProcessingQueue] = useState(false);
+  const [reactionVideoSrc, setReactionVideoSrc] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const questionQueueRef = useRef<string[]>([]);
@@ -72,7 +77,20 @@ const Index: React.FC = () => {
     isProcessingRef.current = true;
     while (questionQueueRef.current.length > 0) {
       const question = questionQueueRef.current[0];
-      setPhase('playing-audio');
+      // 1. Play random reaction video
+      const randomReaction = QUESTIONS_REACTIONS[Math.floor(Math.random() * QUESTIONS_REACTIONS.length)];
+      setReactionVideoSrc(randomReaction);
+      setPhase('reaction-video');
+      // Wait for reaction video to finish
+      await new Promise<void>((resolve) => {
+        const handler = () => {
+          setReactionVideoSrc(null);
+          resolve();
+        };
+        // Attach a one-time event handler to VideoWindow via a custom event
+        window.addEventListener('reactionVideoEnded', handler, { once: true });
+      });
+      setPhase('waiting-audio'); // Set phase to waiting-audio while waiting for API
       try {
         const response = await fetch("http://localhost:8000/synthesize-speech", {
           method: "POST",
@@ -90,6 +108,7 @@ const Index: React.FC = () => {
           audioRef.current.pause();
           audioRef.current = null;
         }
+        setPhase('playing-audio'); // Switch to playing-audio when audio is about to play
         await new Promise<void>((resolve) => {
           const audio = new Audio(audioUrl);
           audioRef.current = audio;
@@ -183,12 +202,28 @@ const Index: React.FC = () => {
     showVideo = true;
     loop = false;
     muted = false;
-  } else if (phase === "playing-audio") {
-    videoSrc = TALKING_LOOP_VIDEO;
+  } else if (phase === "waiting-audio") {
+    videoSrc = TALKING_LOOP_VIDEO; // Show talking loop video while waiting for API
     showVideo = true;
     loop = true;
     muted = true;
+  } else if (phase === "playing-audio") {
+    videoSrc = NO_SOUND_VIDEO; // Play muted no-sound video while audio is playing
+    showVideo = true;
+    loop = true;
+    muted = true;
+  } else if (phase === 'reaction-video' && reactionVideoSrc) {
+    videoSrc = reactionVideoSrc;
+    showVideo = true;
+    loop = false;
+    muted = false;
   }
+
+  // Custom handler for reaction video end
+  const handleReactionVideoEnd = useCallback(() => {
+    // Dispatch a custom event to notify processQuestionQueue
+    window.dispatchEvent(new Event('reactionVideoEnded'));
+  }, []);
 
   if (phase === 'finished') {
     return (
@@ -217,7 +252,7 @@ const Index: React.FC = () => {
               showVideo={showVideo}
               loop={loop}
               muted={muted}
-              onSlideVideoEnd={handleSlideVideoEnd}
+              onSlideVideoEnd={phase === 'reaction-video' ? handleReactionVideoEnd : handleSlideVideoEnd}
               phase={phase}
             />
           </div>
