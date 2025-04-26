@@ -1,10 +1,12 @@
 import os
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import Response
+from fastapi.responses import Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from teacher_communitcation.voice_communication import VoiceCommunication
 from teacher_communitcation.text_communication import TextCommunication
+import base64
+
 app = FastAPI()
 
 # Allow all CORS (not secure, but as requested)
@@ -27,7 +29,7 @@ class TextToSpeechRequest(BaseModel):
 
 @app.post("/synthesize-speech")
 def synthesize_speech(request: TextToSpeechRequest):
-    """Convert text to speech and return audio bytes"""
+    """Convert text to speech and return both answer and audio bytes (base64)"""
 
     print(request)
 
@@ -37,11 +39,11 @@ def synthesize_speech(request: TextToSpeechRequest):
         audio_bytes = voice_client.synthesize_speech_elevenlabs(answer)
         if audio_bytes is None:
             raise HTTPException(status_code=500, detail="Failed to synthesize speech")
-        
-        return Response(
-            content=audio_bytes,
-            media_type="audio/mp3"
-        )
+        audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+        return JSONResponse(content={
+            "answer": answer,
+            "audio_base64": audio_base64
+        })
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
