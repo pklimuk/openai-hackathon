@@ -8,9 +8,10 @@ interface ChatInterfaceProps {
   onSendQuestion: (text: string) => void;
   lessonStarted: boolean;
   onStartLesson: () => void;
+  onStopLesson: () => void;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ onSendQuestion, lessonStarted, onStartLesson }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ onSendQuestion, lessonStarted, onStartLesson, onStopLesson }) => {
   const [messages, setMessages] = useState<MessageType[]>([
     {
       id: generateId(),
@@ -60,6 +61,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onSendQuestion, lessonSta
           onClick={onStartLesson}
         >
           Start Lesson
+        </button>
+      )}
+      {/* Show Stop Lesson button only when lesson is started */}
+      {lessonStarted && (
+        <button
+          className="m-4 px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+          onClick={onStopLesson}
+        >
+          Stop Lesson
         </button>
       )}
       <ChatInput onSendMessage={handleSendMessage} lessonStarted={lessonStarted} />

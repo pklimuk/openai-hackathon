@@ -179,6 +179,18 @@ const Index: React.FC = () => {
     setPhase('slide-video');
   }, []);
 
+  // Handler for Stop Lesson button
+  const handleStopLesson = useCallback(() => {
+    setPhase('finished');
+    setIsProcessingQueue(false);
+    isProcessingRef.current = false;
+    setQuestionQueue([]);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+  }, []);
+
   // Clean up audio on unmount
   useEffect(() => {
     return () => {
@@ -259,7 +271,12 @@ const Index: React.FC = () => {
           </div>
           {/* Chat takes up 30% on larger screens */}
           <div className="w-full md:w-[30%] h-1/2 md:h-full">
-            <ChatInterface onSendQuestion={handleQuestion} lessonStarted={lessonStarted} onStartLesson={handleStartLesson} />
+            <ChatInterface 
+              onSendQuestion={handleQuestion} 
+              lessonStarted={lessonStarted} 
+              onStartLesson={handleStartLesson}
+              onStopLesson={handleStopLesson}
+            />
           </div>
         </div>
       </div>
